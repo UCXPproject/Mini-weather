@@ -1,16 +1,25 @@
 {
-  "name": "Mini Weather - Accurate Global Weather",
+  "name": "Mini Weather - Real-time Global Forecasts",
   "short_name": "MiniWeather",
-  "description": "Most accurate weather app with interactive garden and 50+ themes",
+  "description": "Real-time weather with 50+ themes, private & secure",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0a0a0a",
   "theme_color": "#1e88e5",
+  "background_color": "#0a0a0a",
   "icons": [
     {"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231e88e5' width='192' height='192' rx='45'/><circle cx='96' cy='96' r='55' fill='%23FFB300'/></svg>", "sizes": "192x192", "type": "image/svg+xml"},
     {"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%231e88e5' width='512' height='512' rx='120'/><circle cx='256' cy='256' r='150' fill='%23FFB300'/></svg>", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable"}
   ],
-  "categories": ["weather", "utilities"]
+  "screenshots": [
+    {"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%230a0a0a' width='540' height='720'/><text x='270' y='360' font-size='36' fill='%23fff' text-anchor='middle' font-weight='bold'>Mini Weather</text></svg>", "sizes": "540x720", "type": "image/svg+xml", "form_factor": "narrow"},
+    {"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 720'><rect fill='%230a0a0a' width='1280' height='720'/><text x='640' y='360' font-size='48' fill='%23fff' text-anchor='middle' font-weight='bold'>Mini Weather</text></svg>", "sizes": "1280x720", "type": "image/svg+xml", "form_factor": "wide"}
+  ],
+  "shortcuts": [
+    {"name": "Refresh Weather", "short_name": "Refresh", "description": "Get latest weather data", "url": "/?action=refresh"},
+    {"name": "Change Theme", "short_name": "Theme", "description": "Select a new theme", "url": "/?action=theme"}
+  ],
+  "categories": ["weather", "utilities"],
+  "prefer_related_applications": false
 }
