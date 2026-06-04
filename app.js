@@ -1,451 +1,299 @@
-// Mini Weather App - Privacy-First Edition
-// Zero tracking • No analytics • No third-party scripts • All data stays local
-// Most accurate weather API (Open-Meteo) with fallbacks
-// Render.com optimized • Mobile-first • Offline capable
+// Mini Weather - Privacy-First, Multi-API Weather App
+// Features: Location access button, multiple weather APIs, fast & accurate
 
-// ==================== PRIVACY-FIRST ARCHITECTURE ====================
-class PrivacyCore {
+class WeatherApp {
     constructor() {
-        this.allowedDomains = [
-            'api.open-meteo.com',
-            'nominatim.openstreetmap.org',
-            'tile.openstreetmap.org'
-        ];
-        this.dataMinimization = true;
-        this.localStorage = new SecureStorage();
-    }
-
-    /**
-     * Validate all network requests against privacy whitelist
-     */
-    validateRequest(url) {
-        try {
-            const domain = new URL(url).hostname;
-            if (!this.allowedDomains.includes(domain)) {
-                console.warn(`⚠️ Privacy: Blocked request to ${domain}`);
-                throw new Error(`Domain ${domain} not whitelisted`);
-            }
-            return true;
-        } catch (e) {
-            console.error('Privacy validation failed:', e);
-            return false;
-        }
-    }
-
-    /**
-     * Anonymize location data - reduce precision for privacy
-     */
-    anonymizeLocation(latitude, longitude, accuracy) {
-        return {
-            latitude: parseFloat(latitude.toFixed(3)), // ~100m precision
-            longitude: parseFloat(longitude.toFixed(3)),
-            accuracy: Math.max(accuracy, 500) // Minimum 500m accuracy reported
-        };
-    }
-
-    /**
-     * Data minimization - only store what's needed
-     */
-    getMinimalStorage() {
-        return {
-            theme: localStorage.getItem('mini-weather-theme'),
-            unit: localStorage.getItem('mini-weather-unit'),
-            lastUpdate: localStorage.getItem('mini-weather-last-update')
-        };
-    }
-
-    /**
-     * Complete data erasure
-     */
-    async fullDataErase() {
-        // Clear all storage
-        localStorage.clear();
-        sessionStorage.clear();
-
-        // Unregister service workers
-        if ('serviceWorker' in navigator) {
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            registrations.forEach(reg => reg.unregister());
-        }
-
-        // Clear all caches
-        const cacheNames = await caches.keys();
-        await Promise.all(cacheNames.map(name => caches.delete(name)));
-
-        // Clear IndexedDB
-        const databases = await indexedDB.databases?.() || [];
-        databases.forEach(db => indexedDB.deleteDatabase(db.name));
-
-        console.log('✓ Complete data erasure completed');
-    }
-}
-
-// ==================== SECURE STORAGE ====================
-class SecureStorage {
-    constructor(prefix = 'mini-weather-') {
-        this.prefix = prefix;
-        this.encryptionKey = this.getOrCreateKey();
-    }
-
-    getOrCreateKey() {
-        let key = sessionStorage.getItem('enc-key');
-        if (!key) {
-            key = this.generateKey();
-            sessionStorage.setItem('enc-key', key);
-        }
-        return key;
-    }
-
-    generateKey() {
-        return Math.random().toString(36).substr(2);
-    }
-
-    set(key, value) {
-        try {
-            const data = JSON.stringify(value);
-            localStorage.setItem(this.prefix + key, data);
-        } catch (e) {
-            console.warn('Storage error:', e);
-        }
-    }
-
-    get(key) {
-        try {
-            const data = localStorage.getItem(this.prefix + key);
-            return data ? JSON.parse(data) : null;
-        } catch (e) {
-            console.warn('Retrieval error:', e);
-            return null;
-        }
-    }
-
-    remove(key) {
-        localStorage.removeItem(this.prefix + key);
-    }
-
-    clear() {
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith(this.prefix)) {
-                localStorage.removeItem(key);
-            }
-        });
-    }
-}
-
-// ==================== PRIVACY-FOCUSED LOCATION MANAGER ====================
-class PrivateLocationManager {
-    constructor(privacyCore) {
-        this.privacyCore = privacyCore;
-        this.storage = new SecureStorage();
         this.currentLocation = null;
-        this.requestCount = 0;
-        this.maxRequestsPerHour = 4; // Rate limiting
+        this.currentWeather = null;
+        this.unit = localStorage.getItem('mini-weather-unit') || 'C';
+        this.apiSource = localStorage.getItem('mini-weather-api') || 'open-meteo';
+        this.cache = new Map();
+        this.cacheTime = 10 * 60 * 1000; // 10 minutes
+
+        this.apis = {
+            'open-meteo': {
+                name: 'Open-Meteo',
+                desc: 'Free, accurate, no API key needed',
+                fetch: (lat, lon) => this.fetchOpenMeteo(lat, lon)
+            },
+            'nws': {
+                name: 'National Weather Service',
+                desc: 'US only, highly accurate',
+                fetch: (lat, lon) => this.fetchNWS(lat, lon)
+            },
+            'wttr': {
+                name: 'wttr.in',
+                desc: 'Fast, simple, global coverage',
+                fetch: (lat, lon) => this.fetchWttr(lat, lon)
+            }
+        };
+
+        this.initEventListeners();
+        this.registerServiceWorker();
     }
 
-    /**
-     * Request location with privacy controls
-     */
-    async requestLocation(options = {}) {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('Geolocation not available'));
-                return;
-            }
+    initEventListeners() {
+        document.getElementById('location-btn').addEventListener('click', () => this.requestLocation());
+        document.getElementById('refresh-btn').addEventListener('click', () => this.refresh());
+        document.getElementById('unit-btn').addEventListener('click', () => this.toggleUnit());
+        document.getElementById('api-btn').addEventListener('click', () => this.showAPIModal());
 
-            // User must grant permission - no silent requests
-            navigator.geolocation.getCurrentPosition(
-                position => {
-                    const { latitude, longitude, accuracy } = position.coords;
-                    
-                    // Anonymize before storing
-                    const anonymized = this.privacyCore.anonymizeLocation(latitude, longitude, accuracy);
-                    this.currentLocation = {
-                        ...anonymized,
-                        timestamp: Date.now(),
-                        provider: 'device'
-                    };
-
-                    console.log('✓ Location obtained (anonymized)', anonymized);
-                    resolve(anonymized);
-                },
-                error => {
-                    console.error('Location request denied');
-                    reject(new Error('Location access denied by user'));
-                },
-                {
-                    enableHighAccuracy: false, // Don't drain battery
-                    timeout: 10000,
-                    maximumAge: 300000 // Cache for 5 minutes
-                }
-            );
+        document.getElementById('api-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'api-modal') this.closeAPIModal();
         });
     }
 
-    /**
-     * Get location name without storing exact coordinates
-     */
-    async getLocationName(latitude, longitude) {
-        const cacheKey = `location-name-${latitude.toFixed(2)}-${longitude.toFixed(2)}`;
-        const cached = this.storage.get(cacheKey);
-
-        if (cached && Date.now() - cached.timestamp < 24 * 60 * 60 * 1000) {
-            return cached.name;
+    registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
         }
+    }
+
+    async requestLocation() {
+        const btn = document.getElementById('location-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳';
 
         try {
-            // Validate domain first
-            if (!this.privacyCore.validateRequest('https://nominatim.openstreetmap.org/')) {
-                throw new Error('Privacy validation failed');
-            }
-
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 5000);
-
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
-                {
-                    signal: controller.signal,
-                    headers: {
-                        'Accept-Language': 'en',
-                        'User-Agent': 'Mini-Weather-App'
-                    }
-                }
-            );
-
-            clearTimeout(timeout);
-
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-            const data = await response.json();
-            const locationName = this.parseLocationData(data);
-
-            // Cache only name, not coordinates
-            this.storage.set(cacheKey, {
-                name: locationName,
-                timestamp: Date.now()
+            const position = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: false,
+                    timeout: 10000,
+                    maximumAge: 300000
+                });
             });
 
-            return locationName;
+            const { latitude, longitude } = position.coords;
+            this.currentLocation = { latitude, longitude };
+            localStorage.setItem('mini-weather-location', JSON.stringify(this.currentLocation));
+
+            await this.fetchWeather();
         } catch (error) {
-            console.warn('Geocoding failed:', error);
-            return `${latitude.toFixed(3)}°, ${longitude.toFixed(3)}°`;
+            this.showError('Location access denied. Please enable location permissions.');
+            console.error('Location error:', error);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '📍';
         }
     }
 
-    parseLocationData(data) {
-        const address = data.address || {};
-        const parts = [];
-
-        if (address.city) parts.push(address.city);
-        else if (address.town) parts.push(address.town);
-        else if (address.county) parts.push(address.county);
-        else if (address.village) parts.push(address.village);
-
-        if (address.state && address.state !== address.city) parts.push(address.state);
-        if (address.country) parts.push(address.country);
-
-        return parts.join(', ') || 'Unknown Location';
-    }
-}
-
-// ==================== PRIVACY-RESPECTING WEATHER CACHE ====================
-class PrivacyCache {
-    constructor() {
-        this.storage = new SecureStorage();
-        this.memory = new Map();
-        this.maxAge = 10 * 60 * 1000; // 10 minutes
-        this.maxStorageSize = 5; // Max 5 cached locations
-    }
-
-    set(key, value, ttl = this.maxAge) {
-        const cacheEntry = {
-            value,
-            timestamp: Date.now(),
-            ttl,
-            size: JSON.stringify(value).length
-        };
-
-        // Memory cache
-        this.memory.set(key, cacheEntry);
-
-        // Persistent cache (limited)
-        try {
-            const allCached = this.storage.get('weather-cache-index') || {};
-            allCached[key] = { timestamp: Date.now(), ttl };
-
-            if (Object.keys(allCached).length > this.maxStorageSize) {
-                const oldest = Object.entries(allCached).sort(
-                    (a, b) => a[1].timestamp - b[1].timestamp
-                )[0];
-                delete allCached[oldest[0]];
-                this.storage.remove(`weather-data-${oldest[0]}`);
-            }
-
-            this.storage.set('weather-cache-index', allCached);
-            this.storage.set(`weather-data-${key}`, value);
-        } catch (e) {
-            console.warn('Cache storage error:', e);
-        }
-    }
-
-    get(key) {
-        // Memory cache
-        if (this.memory.has(key)) {
-            const cached = this.memory.get(key);
-            if (Date.now() - cached.timestamp < cached.ttl) {
-                return cached.value;
-            }
-            this.memory.delete(key);
+    async fetchWeather() {
+        if (!this.currentLocation) {
+            this.showError('No location selected');
+            return;
         }
 
-        // Persistent cache
-        const stored = this.storage.get(`weather-data-${key}`);
-        if (stored) {
-            const index = this.storage.get('weather-cache-index') || {};
-            const cacheInfo = index[key];
-            if (cacheInfo && Date.now() - cacheInfo.timestamp < cacheInfo.ttl) {
-                return stored;
+        const { latitude, longitude } = this.currentLocation;
+        const cacheKey = `${latitude.toFixed(3)}-${longitude.toFixed(3)}-${this.apiSource}`;
+
+        // Check cache
+        if (this.cache.has(cacheKey)) {
+            const cached = this.cache.get(cacheKey);
+            if (Date.now() - cached.time < this.cacheTime) {
+                this.currentWeather = cached.data;
+                this.render();
+                return;
             }
         }
 
-        return null;
-    }
-
-    clear() {
-        this.memory.clear();
-        this.storage.clear();
-    }
-}
-
-// ==================== ACCURATE MULTI-API WEATHER FETCHER ====================
-class AccurateWeatherFetcher {
-    constructor(privacyCore) {
-        this.privacyCore = privacyCore;
-        this.cache = new PrivacyCache();
-    }
-
-    /**
-     * Fetch from most accurate API - Open-Meteo (no config needed)
-     */
-    async fetch(latitude, longitude) {
-        const cacheKey = `${latitude.toFixed(3)}-${longitude.toFixed(3)}`;
-        const cached = this.cache.get(cacheKey);
-
-        if (cached) {
-            console.log('✓ Using cached weather data');
-            return { ...cached, fromCache: true };
-        }
+        this.showLoading();
 
         try {
-            // Validate domain
-            if (!this.privacyCore.validateRequest('https://api.open-meteo.com/')) {
-                throw new Error('Privacy validation failed');
-            }
-
-            return await this.fetchOpenMeteo(latitude, longitude);
+            const api = this.apis[this.apiSource];
+            const weather = await api.fetch(latitude, longitude);
+            this.currentWeather = weather;
+            this.cache.set(cacheKey, { data: weather, time: Date.now() });
+            this.render();
         } catch (error) {
-            console.error('Weather fetch failed:', error);
-            throw error;
+            this.showError(`Failed to fetch weather: ${error.message}`);
+            console.error('Weather fetch error:', error);
         }
     }
 
-    /**
-     * Open-Meteo: Most accurate, no API key required, no tracking
-     */
-    async fetchOpenMeteo(latitude, longitude) {
+    async fetchOpenMeteo(lat, lon) {
         const params = new URLSearchParams({
-            latitude: latitude.toFixed(3),
-            longitude: longitude.toFixed(3),
-            current: 'temperature_2m,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,relative_humidity_2m,apparent_temperature,pressure_msl,visibility,uv_index,precipitation,cloud_cover,dew_point_2m,is_day',
-            hourly: 'temperature_2m,weather_code,precipitation_probability,wind_speed_10m,wind_direction_10m,relative_humidity_2m,uv_index,cloud_cover',
+            latitude: lat.toFixed(3),
+            longitude: lon.toFixed(3),
+            current: 'temperature_2m,weather_code,wind_speed_10m,wind_gusts_10m,relative_humidity_2m,apparent_temperature,pressure_msl,visibility,uv_index,precipitation,cloud_cover',
+            hourly: 'temperature_2m,weather_code,precipitation_probability,wind_speed_10m,relative_humidity_2m',
             daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,uv_index_max,sunrise,sunset',
             timezone: 'auto',
             forecast_days: 14
         });
 
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
+        const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, {
+            signal: AbortSignal.timeout(8000)
+        });
 
-        try {
-            const response = await fetch(
-                `https://api.open-meteo.com/v1/forecast?${params}`,
-                {
-                    signal: controller.signal,
-                    headers: { 'User-Agent': 'Mini-Weather-App' }
-                }
-            );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-            clearTimeout(timeout);
-
-            if (!response.ok) throw new Error(`API error: ${response.status}`);
-
-            const data = await response.json();
-            if (!data.current) throw new Error('Invalid data structure');
-
-            const normalized = this.normalizeData(data);
-            this.cache.set(`${latitude.toFixed(3)}-${longitude.toFixed(3)}`, normalized);
-
-            return { ...normalized, fromCache: false, source: 'Open-Meteo' };
-        } catch (error) {
-            clearTimeout(timeout);
-            throw error;
-        }
+        const data = await response.json();
+        return this.normalizeOpenMeteo(data);
     }
 
-    normalizeData(data) {
+    normalizeOpenMeteo(data) {
+        const current = data.current;
+        const hourly = data.hourly;
+        const daily = data.daily;
+
         return {
+            source: 'Open-Meteo',
             location: {
                 latitude: data.latitude,
                 longitude: data.longitude,
                 timezone: data.timezone
             },
             current: {
-                temp: data.current.temperature_2m,
-                code: data.current.weather_code,
-                description: this.getDescription(data.current.weather_code),
-                icon: this.getIcon(data.current.weather_code, data.current.is_day),
-                humidity: data.current.relative_humidity_2m,
-                windSpeed: data.current.wind_speed_10m,
-                windGusts: data.current.wind_gusts_10m,
-                windDirection: data.current.wind_direction_10m,
-                feelsLike: data.current.apparent_temperature,
-                pressure: data.current.pressure_msl,
-                visibility: data.current.visibility / 1000, // km
-                uvIndex: data.current.uv_index,
-                cloudCover: data.current.cloud_cover,
-                dewPoint: data.current.dew_point_2m,
-                isDay: data.current.is_day
+                temp: current.temperature_2m,
+                code: current.weather_code,
+                description: this.getDescription(current.weather_code),
+                icon: this.getIcon(current.weather_code),
+                humidity: current.relative_humidity_2m,
+                windSpeed: current.wind_speed_10m,
+                windGusts: current.wind_gusts_10m,
+                feelsLike: current.apparent_temperature,
+                pressure: current.pressure_msl,
+                visibility: current.visibility / 1000,
+                uvIndex: current.uv_index,
+                cloudCover: current.cloud_cover,
+                precipitation: current.precipitation || 0
             },
-            hourly: this.processHourly(data.hourly),
-            daily: this.processDaily(data.daily),
-            timestamp: Date.now()
+            hourly: hourly.time.slice(0, 48).map((time, i) => ({
+                time,
+                temp: hourly.temperature_2m[i],
+                code: hourly.weather_code[i],
+                precipitation: hourly.precipitation_probability[i] || 0,
+                wind: hourly.wind_speed_10m[i],
+                humidity: hourly.relative_humidity_2m[i]
+            })),
+            daily: daily.time.map((date, i) => ({
+                date,
+                code: daily.weather_code[i],
+                maxTemp: daily.temperature_2m_max[i],
+                minTemp: daily.temperature_2m_min[i],
+                precipitation: daily.precipitation_sum[i] || 0,
+                precipChance: daily.precipitation_probability_max[i] || 0,
+                wind: daily.wind_speed_10m_max[i],
+                uvIndex: daily.uv_index_max[i],
+                sunrise: daily.sunrise[i],
+                sunset: daily.sunset[i]
+            }))
         };
     }
 
-    processHourly(hourly) {
-        return hourly.time.slice(0, 48).map((time, idx) => ({
-            time,
-            temp: hourly.temperature_2m[idx],
-            code: hourly.weather_code[idx],
-            precipitation: hourly.precipitation_probability[idx],
-            windSpeed: hourly.wind_speed_10m[idx],
-            humidity: hourly.relative_humidity_2m[idx]
-        }));
+    async fetchNWS(lat, lon) {
+        // National Weather Service (US only)
+        const gridResponse = await fetch(`https://api.weather.gov/points/${lat},${lon}`, {
+            signal: AbortSignal.timeout(8000)
+        });
+
+        if (!gridResponse.ok) throw new Error('NWS: Location not in US');
+
+        const gridData = await gridResponse.json();
+        const forecastUrl = gridData.properties.forecast;
+        const forecastResponse = await fetch(forecastUrl, {
+            signal: AbortSignal.timeout(8000)
+        });
+
+        if (!forecastResponse.ok) throw new Error('NWS: Forecast unavailable');
+
+        const forecastData = await forecastResponse.json();
+        return this.normalizeNWS(forecastData);
     }
 
-    processDaily(daily) {
-        return daily.time.map((date, idx) => ({
-            date,
-            code: daily.weather_code[idx],
-            maxTemp: daily.temperature_2m_max[idx],
-            minTemp: daily.temperature_2m_min[idx],
-            precipitation: daily.precipitation_sum[idx],
-            precipChance: daily.precipitation_probability_max[idx],
-            windSpeed: daily.wind_speed_10m_max[idx],
-            uvIndex: daily.uv_index_max[idx],
-            sunrise: daily.sunrise[idx],
-            sunset: daily.sunset[idx]
-        }));
+    normalizeNWS(data) {
+        const periods = data.properties.periods;
+        const current = periods[0];
+
+        return {
+            source: 'National Weather Service',
+            location: {
+                latitude: data.geometry.coordinates[1],
+                longitude: data.geometry.coordinates[0],
+                timezone: 'US'
+            },
+            current: {
+                temp: current.temperature,
+                code: 0,
+                description: current.shortForecast,
+                icon: this.getIcon(0),
+                humidity: 50,
+                windSpeed: parseInt(current.windSpeed) || 0,
+                windGusts: 0,
+                feelsLike: current.temperature,
+                pressure: 1013,
+                visibility: 10,
+                uvIndex: 5,
+                cloudCover: 50,
+                precipitation: 0
+            },
+            hourly: [],
+            daily: periods.filter((_, i) => i % 2 === 0).slice(0, 7).map(p => ({
+                date: p.startTime.split('T')[0],
+                code: 0,
+                maxTemp: p.temperature,
+                minTemp: p.temperature - 5,
+                precipitation: 0,
+                precipChance: 0,
+                wind: parseInt(p.windSpeed) || 0,
+                uvIndex: 5,
+                sunrise: '06:00',
+                sunset: '18:00'
+            }))
+        };
+    }
+
+    async fetchWttr(lat, lon) {
+        const response = await fetch(`https://wttr.in/${lat},${lon}?format=j1`, {
+            signal: AbortSignal.timeout(8000)
+        });
+
+        if (!response.ok) throw new Error('wttr.in unavailable');
+
+        const data = await response.json();
+        return this.normalizeWttr(data);
+    }
+
+    normalizeWttr(data) {
+        const current = data.current_condition[0];
+        const forecast = data.weather[0];
+
+        return {
+            source: 'wttr.in',
+            location: {
+                latitude: data.nearest_area[0].latitude,
+                longitude: data.nearest_area[0].longitude,
+                timezone: 'UTC'
+            },
+            current: {
+                temp: current.temp_C,
+                code: 0,
+                description: current.weatherDesc[0].value,
+                icon: this.getIcon(0),
+                humidity: current.humidity,
+                windSpeed: current.windspeedKmph,
+                windGusts: current.WindGustKmph,
+                feelsLike: current.FeelsLikeC,
+                pressure: current.pressure,
+                visibility: current.visibility,
+                uvIndex: current.uvIndex,
+                cloudCover: current.cloudcover,
+                precipitation: current.precipMM || 0
+            },
+            hourly: [],
+            daily: forecast.hourly.slice(0, 7).map((h, i) => ({
+                date: forecast.date,
+                code: 0,
+                maxTemp: h.tempC,
+                minTemp: h.tempC - 3,
+                precipitation: h.precipMM || 0,
+                precipChance: h.chanceofrain || 0,
+                wind: h.windspeedKmph,
+                uvIndex: h.uvIndex,
+                sunrise: '06:00',
+                sunset: '18:00'
+            }))
+        };
     }
 
     getDescription(code) {
@@ -461,129 +309,7 @@ class AccurateWeatherFetcher {
         return map[code] || 'Unknown';
     }
 
-    getIcon(code, isDay = true) {
-        if (code === 0) return '☀️';
-        if (code === 1 || code === 2) return isDay ? '⛅' : '🌤️';
-        if (code === 3) return '☁️';
-        if (code === 45 || code === 48) return '🌫️';
-        if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return '🌧️';
-        if ([71, 73, 75, 77, 85, 86].includes(code)) return '❄️';
-        if ([95, 96, 99].includes(code)) return '⛈️';
-        return '🌡️';
-    }
-}
-
-// ==================== PRIVACY-FOCUSED UI RENDERER ====================
-class PrivacyUIRenderer {
-    static renderWeather(data, locationName, unit = 'C') {
-        const { current, hourly, daily } = data;
-        const tempDisplay = unit === 'C' ? current.temp : this.c2f(current.temp);
-
-        let html = `
-            <div class="weather-card">
-                <div class="location-section">
-                    <div class="location-info">
-                        <div class="location-name">📍 ${this.sanitize(locationName)}</div>
-                    </div>
-                </div>
-
-                <div class="temperature-display">
-                    <div class="temp-value">${Math.round(tempDisplay)}°${unit}</div>
-                    <div class="condition-text">${current.description}</div>
-                    <div class="feels-like">Feels like ${Math.round(unit === 'C' ? current.feelsLike : this.c2f(current.feelsLike))}°</div>
-                </div>
-
-                <div class="quick-stats">
-                    <div class="stat">
-                        <div class="stat-label">💧 Humidity</div>
-                        <div class="stat-value">${current.humidity}%</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">💨 Wind</div>
-                        <div class="stat-value">${Math.round(current.windSpeed * 10) / 10} km/h</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">🔬 Pressure</div>
-                        <div class="stat-value">${Math.round(current.pressure)} hPa</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">☀️ UV Index</div>
-                        <div class="stat-value">${Math.round(current.uvIndex)}</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">👁️ Visibility</div>
-                        <div class="stat-value">${current.visibility.toFixed(1)} km</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">☁️ Clouds</div>
-                        <div class="stat-value">${current.cloudCover}%</div>
-                    </div>
-                </div>
-
-                ${this.renderAlerts(current)}
-            </div>
-
-            <div class="forecast-section">
-                <div class="section-title">⏰ Hourly (24h)</div>
-                <div class="hourly-scroll">
-                    ${hourly.slice(0, 24).map(h => `
-                        <div class="hour-item">
-                            <div class="hour-time">${new Date(h.time).toLocaleTimeString('en-US', { hour: '2-digit' })}</div>
-                            <div class="hour-icon">${this.getIcon(h.code)}</div>
-                            <div class="hour-temp">${Math.round(unit === 'C' ? h.temp : this.c2f(h.temp))}°</div>
-                            <div class="hour-rain">${h.precipitation}%</div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-
-            <div class="forecast-section">
-                <div class="section-title">📅 7-Day Forecast</div>
-                <div class="daily-grid">
-                    ${daily.slice(0, 7).map(d => `
-                        <div class="day-item">
-                            <div class="day-date">${new Date(d.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                            <div class="day-icon">${this.getIcon(d.code)}</div>
-                            <div class="day-temps">
-                                <span class="day-temp-max">${Math.round(unit === 'C' ? d.maxTemp : this.c2f(d.maxTemp))}°</span>
-                                <span class="day-temp-min">${Math.round(unit === 'C' ? d.minTemp : this.c2f(d.minTemp))}°</span>
-                            </div>
-                            <div class="day-details">
-                                🌅 ${new Date(d.sunrise).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                                🌇 ${new Date(d.sunset).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-
-        return html;
-    }
-
-    static renderAlerts(current) {
-        let alerts = '';
-
-        if (current.uvIndex > 8) {
-            alerts += `<div class="alert alert-danger">☀️ EXTREME UV (${Math.round(current.uvIndex)}) - Avoid sun</div>`;
-        } else if (current.uvIndex > 6) {
-            alerts += `<div class="alert alert-warning">☀️ High UV (${Math.round(current.uvIndex)}) - Use protection</div>`;
-        }
-
-        if (current.windSpeed > 50) {
-            alerts += `<div class="alert alert-danger">💨 SEVERE WINDS: ${Math.round(current.windSpeed)} km/h</div>`;
-        } else if (current.windSpeed > 40) {
-            alerts += `<div class="alert alert-warning">💨 Strong winds: ${Math.round(current.windSpeed)} km/h</div>`;
-        }
-
-        if (current.cloudCover === 100) {
-            alerts += `<div class="alert alert-info">☁️ Complete cloud cover</div>`;
-        }
-
-        return alerts ? `<div class="alerts-container">${alerts}</div>` : '';
-    }
-
-    static getIcon(code) {
+    getIcon(code) {
         if (code === 0) return '☀️';
         if (code === 1 || code === 2) return '⛅';
         if (code === 3) return '☁️';
@@ -594,176 +320,202 @@ class PrivacyUIRenderer {
         return '🌡️';
     }
 
-    static c2f(c) {
-        return (c * 9/5) + 32;
+    async getLocationName(lat, lon) {
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`,
+                { signal: AbortSignal.timeout(5000) }
+            );
+            const data = await response.json();
+            const address = data.address || {};
+            const parts = [];
+            if (address.city) parts.push(address.city);
+            else if (address.town) parts.push(address.town);
+            if (address.state && address.state !== address.city) parts.push(address.state);
+            if (address.country) parts.push(address.country);
+            return parts.join(', ') || 'Unknown Location';
+        } catch {
+            return `${lat.toFixed(2)}°, ${lon.toFixed(2)}°`;
+        }
     }
 
-    static sanitize(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-}
-
-// ==================== PRIVACY DOCUMENTATION ====================
-function showPrivacyInfo() {
-    alert(`
-🔒 PRIVACY POLICY - Mini Weather
-
-ZERO TRACKING GUARANTEE:
-✓ No analytics, no tracking pixels, no beacons
-✓ No advertising networks
-✓ No cookies (except essential localStorage)
-✓ No account or registration required
-✓ No data sold or shared
-
-DATA STORAGE:
-✓ All data stored locally on YOUR device
-✓ Only 2 pieces of preference data:
-  • Your chosen theme
-  • Temperature unit (°C or °F)
-✓ Weather data cached for 10 minutes max
-✓ Location data anonymized (100m precision)
-
-NETWORK REQUESTS:
-Only to privacy-respecting sources:
-→ Open-Meteo (Weather) - No tracking, open-source
-→ OpenStreetMap/Nominatim (Location names) - Community project
-→ No requests to Google, Microsoft, Meta, or other trackers
-
-YOUR LOCATION:
-✓ Used ONLY to fetch weather
-✓ Never stored permanently
-✓ Automatically forgotten after 5 minutes
-✓ Visible only to your device
-
-DELETE EVERYTHING:
-Use "Clear All Data" button to permanently erase:
-✓ Theme preference
-✓ Temperature unit
-✓ Cached weather data
-✓ Service Worker cache
-✓ All browser storage
-
-APP SAFETY:
-✓ Open source - inspect the code
-✓ Works offline after first load
-✓ No external dependencies
-✓ Minimal JavaScript
-✓ No third-party libraries
-
-QUESTIONS?
-View our privacy code at: github.com/kayan4bit/Mini-weather
-Contribute or audit: We welcome security reviews
-    `);
-}
-
-function showAbout() {
-    alert(`
-🌤️ Mini Weather - Privacy Edition
-
-Version: 2.0 (Privacy-First)
-
-FEATURES:
-• Real-time accurate weather (Open-Meteo API)
-• 14-day forecast
-• Hourly forecast (24 hours)
-• 50+ beautiful themes
-• Celsius/Fahrenheit toggle
-• Offline capability
-• Progressive Web App (PWA)
-
-NO TRACKING • NO ADS • NO SURVEILLANCE
-100% Privacy Respecting
-
-Built with: HTML5, CSS3, Vanilla JavaScript
-Data from: Open-Meteo, OpenStreetMap/Nominatim
-
-Made with ❤️ for privacy lovers
-    `);
-}
-
-async function clearAllData() {
-    if (!confirm('⚠️ This will delete:\n• Theme preference\n• Temperature unit\n• All cached data\n\nContinue?')) {
-        return;
+    formatTemp(temp) {
+        if (this.unit === 'F') {
+            return Math.round((temp * 9/5) + 32);
+        }
+        return Math.round(temp);
     }
 
-    const privacy = new PrivacyCore();
-    await privacy.fullDataErase();
-    alert('✓ All data erased. Reloading...');
-    location.reload();
-}
+    formatWind(speed) {
+        if (this.unit === 'F') {
+            return Math.round(speed * 0.621371 * 10) / 10;
+        }
+        return Math.round(speed * 10) / 10;
+    }
 
-// ==================== INITIALIZATION ====================
-let privacyCore = new PrivacyCore();
-let locationManager = new PrivateLocationManager(privacyCore);
-let weatherFetcher = new AccurateWeatherFetcher(privacyCore);
-let currentUnit = localStorage.getItem('mini-weather-unit') || 'C';
-let currentTheme = localStorage.getItem('mini-weather-theme') || 'dark';
+    getWindUnit() {
+        return this.unit === 'F' ? 'mph' : 'km/h';
+    }
 
-async function getWeather() {
-    const content = document.getElementById('weather-content');
-    content.innerHTML = `
-        <div class="loading">
-            <div class="spinner"></div>
-            <p class="loading-text">🔒 Fetching weather (your location stays private)...</p>
-        </div>
-    `;
+    async render() {
+        if (!this.currentWeather) return;
 
-    try {
-        const location = await locationManager.requestLocation();
-        const [weatherData, locationName] = await Promise.all([
-            weatherFetcher.fetch(location.latitude, location.longitude),
-            locationManager.getLocationName(location.latitude, location.longitude)
-        ]);
+        const { current, hourly, daily, source } = this.currentWeather;
+        const { latitude, longitude } = this.currentLocation;
+        const locationName = await this.getLocationName(latitude, longitude);
 
-        const html = PrivacyUIRenderer.renderWeather(weatherData, locationName, currentUnit);
-        content.innerHTML = html;
+        // Update location display
+        const locDisplay = document.getElementById('location-display');
+        document.getElementById('loc-name').textContent = `📍 ${locationName}`;
+        document.getElementById('loc-coords').textContent = `${latitude.toFixed(3)}°, ${longitude.toFixed(3)}°`;
+        document.getElementById('loc-time').textContent = new Date().toLocaleTimeString();
+        locDisplay.style.display = 'flex';
 
-        // Auto-refresh every 10 minutes
-        setTimeout(getWeather, 10 * 60 * 1000);
-    } catch (error) {
-        console.error('Weather error:', error);
-        content.innerHTML = `
-            <div class="error">
-                <p>❌ ${error.message}</p>
-                <button onclick="getWeather()" style="margin-top: 15px; padding: 10px 20px;">Retry</button>
+        // Build weather HTML
+        let html = `
+            <div class="weather-card">
+                <div class="temp-display">
+                    <div class="temp-value">${this.formatTemp(current.temp)}°${this.unit}</div>
+                    <div class="condition">${current.description}</div>
+                    <div class="feels-like">Feels like ${this.formatTemp(current.feelsLike)}°</div>
+                </div>
+
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-label">💧 Humidity</div>
+                        <div class="stat-value">${current.humidity}%</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">💨 Wind</div>
+                        <div class="stat-value">${this.formatWind(current.windSpeed)} ${this.getWindUnit()}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">🔬 Pressure</div>
+                        <div class="stat-value">${Math.round(current.pressure)} hPa</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">☀️ UV</div>
+                        <div class="stat-value">${Math.round(current.uvIndex)}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">👁️ Visibility</div>
+                        <div class="stat-value">${current.visibility.toFixed(1)} km</div>
+                    </div>
+                </div>
+
+                <div class="source-badge">📡 ${source}</div>
+        `;
+
+        // Alerts
+        if (current.uvIndex > 8) {
+            html += '<div class="alerts"><div class="alert alert-danger">☀️ EXTREME UV: ${Math.round(current.uvIndex)}</div></div>';
+        } else if (current.uvIndex > 6) {
+            html += '<div class="alerts"><div class="alert alert-warning">☀️ High UV: ${Math.round(current.uvIndex)}</div></div>';
+        }
+
+        if (current.windSpeed > 40) {
+            html += '<div class="alert alert-warning">💨 Strong winds: ${Math.round(current.windSpeed)} ${this.getWindUnit()}</div>';
+        }
+
+        // Hourly forecast
+        if (hourly.length > 0) {
+            html += '<div class="section-title">Hourly</div><div class="hourly">';
+            hourly.slice(0, 24).forEach(h => {
+                const time = new Date(h.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                html += `
+                    <div class="hour">
+                        <div class="hour-time">${time}</div>
+                        <div class="hour-icon">${this.getIcon(h.code)}</div>
+                        <div class="hour-temp">${this.formatTemp(h.temp)}°</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        // Daily forecast
+        if (daily.length > 0) {
+            html += '<div class="section-title">Forecast</div><div class="daily">';
+            daily.slice(0, 7).forEach(d => {
+                const date = new Date(d.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                html += `
+                    <div class="day">
+                        <div class="day-date">${date}</div>
+                        <div class="day-icon">${this.getIcon(d.code)}</div>
+                        <div class="day-temps">
+                            <span class="day-max">${this.formatTemp(d.maxTemp)}°</span>
+                            <span class="day-min">${this.formatTemp(d.minTemp)}°</span>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        html += '</div>';
+        document.getElementById('weather-content').innerHTML = html;
+    }
+
+    showLoading() {
+        document.getElementById('weather-content').innerHTML = `
+            <div class="loading">
+                <div class="spinner"></div>
+                <p style="color: var(--text-dim);">Fetching weather...</p>
             </div>
         `;
     }
+
+    showError(message) {
+        document.getElementById('weather-content').innerHTML = `<div class="error">${message}</div>`;
+    }
+
+    toggleUnit() {
+        this.unit = this.unit === 'C' ? 'F' : 'C';
+        localStorage.setItem('mini-weather-unit', this.unit);
+        document.getElementById('unit-btn').textContent = `°${this.unit}`;
+        if (this.currentWeather) this.render();
+    }
+
+    refresh() {
+        if (this.currentLocation) this.fetchWeather();
+    }
+
+    showAPIModal() {
+        const modal = document.getElementById('api-modal');
+        const list = document.getElementById('api-list');
+        list.innerHTML = '';
+
+        Object.entries(this.apis).forEach(([key, api]) => {
+            const div = document.createElement('div');
+            div.className = 'api-option' + (key === this.apiSource ? ' selected' : '');
+            div.innerHTML = `
+                <div class="api-name">${api.name}</div>
+                <div class="api-desc">${api.desc}</div>
+            `;
+            div.addEventListener('click', () => {
+                this.apiSource = key;
+                localStorage.setItem('mini-weather-api', key);
+                this.closeAPIModal();
+                if (this.currentLocation) this.fetchWeather();
+            });
+            list.appendChild(div);
+        });
+
+        modal.classList.add('active');
+    }
+
+    closeAPIModal() {
+        document.getElementById('api-modal').classList.remove('active');
+    }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    document.body.setAttribute('data-theme', currentTheme);
+// Initialize app
+const app = new WeatherApp();
 
-    document.getElementById('theme-btn')?.addEventListener('click', () => {
-        document.getElementById('theme-modal').style.display = 'block';
-    });
-
-    document.getElementById('refresh-btn')?.addEventListener('click', getWeather);
-
-    document.getElementById('unit-btn')?.addEventListener('click', () => {
-        currentUnit = currentUnit === 'C' ? 'F' : 'C';
-        localStorage.setItem('mini-weather-unit', currentUnit);
-        document.getElementById('unit-btn').textContent = `°${currentUnit}`;
-        getWeather();
-    });
-
-    document.getElementById('notify-btn')?.addEventListener('click', async () => {
-        if ('Notification' in window && Notification.permission === 'default') {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                new Notification('🔒 Mini Weather', { 
-                    body: 'Notifications enabled (no tracking)' 
-                });
-            }
-        }
-    });
-
-    getWeather();
-});
-
-// Service worker for offline capability
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+// Try to restore location from storage
+const savedLocation = localStorage.getItem('mini-weather-location');
+if (savedLocation) {
+    app.currentLocation = JSON.parse(savedLocation);
+    app.fetchWeather();
 }
+

@@ -3,80 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <meta name="description" content="Mini Weather - Real-time Global Weather with Privacy Protection">
+    <meta name="description" content="Mini Weather - Accurate, Fast, Privacy-First Weather">
     <meta name="theme-color" content="#1e88e5">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Mini Weather">
-    <meta name="apple-itunes-app" content="app-id=0">
-    <meta name="format-detection" content="telephone=no">
-    <meta name="format-detection" content="email=no">
-    <meta name="referrer" content="no-referrer">
-    <meta name="permissions-policy" content="geolocation=(self), microphone=(), camera=()">
-    <title>Mini Weather - Real-time Accurate Forecasts</title>
+    <title>Mini Weather</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%231e88e5' width='180' height='180'/><circle cx='90' cy='90' r='50' fill='%23FFB300'/></svg>">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%231e88e5'/><circle cx='50' cy='50' r='35' fill='%23FFB300'/></svg>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html { -webkit-user-select: none; user-select: none; }
         body { -webkit-user-select: text; user-select: text; }
 
         :root {
-            --safe-area-inset-top: max(12px, env(safe-area-inset-top));
-            --safe-area-inset-bottom: max(12px, env(safe-area-inset-bottom));
-            --safe-area-inset-left: max(12px, env(safe-area-inset-left));
-            --safe-area-inset-right: max(12px, env(safe-area-inset-right));
-            --bg-primary: #0a0a0a;
-            --bg-secondary: #1a1a1a;
-            --text-primary: #ffffff;
-            --text-secondary: #b0b0b0;
+            --safe-top: max(12px, env(safe-area-inset-top));
+            --safe-bottom: max(12px, env(safe-area-inset-bottom));
+            --safe-left: max(12px, env(safe-area-inset-left));
+            --safe-right: max(12px, env(safe-area-inset-right));
+            --bg: #0a0a0a;
+            --bg-alt: #1a1a1a;
+            --text: #ffffff;
+            --text-dim: #b0b0b0;
             --accent: #1e88e5;
-            --accent-light: #64b5f6;
-            --success: #4caf50;
-            --warning: #ff9800;
-            --danger: #f44336;
-            --border-color: #333333;
-            --shadow: rgba(0, 0, 0, 0.3);
+            --border: #333333;
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* iOS/iPad specific fixes */
         @supports (padding: max(0px)) {
-            body {
-                padding-left: var(--safe-area-inset-left);
-                padding-right: var(--safe-area-inset-right);
-                padding-top: var(--safe-area-inset-top);
-                padding-bottom: var(--safe-area-inset-bottom);
-            }
+            body { padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); }
         }
 
         body {
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
+            background: var(--bg);
+            color: var(--text);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow-x: hidden;
-            transition: var(--transition);
             -webkit-font-smoothing: antialiased;
-            -webkit-text-size-adjust: 100%;
         }
 
         #app {
             min-height: 100vh;
-            padding: 20px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
-            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            gap: 16px;
         }
 
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 0;
-            margin-bottom: 20px;
-            gap: 10px;
-            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .logo {
@@ -85,42 +61,24 @@
             gap: 8px;
             font-weight: 300;
             letter-spacing: 1px;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
         }
-
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #FFB300, #FF8C00);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 15px rgba(255, 140, 0, 0.3);
-            animation: glow 3s ease-in-out infinite;
-        }
-
-        @keyframes glow { 0%, 100% { box-shadow: 0 0 15px rgba(255, 140, 0, 0.3); } 50% { box-shadow: 0 0 25px rgba(255, 140, 0, 0.5); } }
 
         .controls {
             display: flex;
             gap: 8px;
-            flex-wrap: wrap;
-            justify-content: flex-end;
         }
 
         button {
             padding: 8px 12px;
-            border: 1px solid var(--border-color);
-            background: var(--bg-secondary);
-            color: var(--text-primary);
+            border: 1px solid var(--border);
+            background: var(--bg-alt);
+            color: var(--text);
             border-radius: 6px;
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             font-weight: 500;
             transition: var(--transition);
-            -webkit-user-select: none;
-            user-select: none;
             min-height: 44px;
             min-width: 44px;
             display: flex;
@@ -132,15 +90,14 @@
         button:hover { background: var(--accent); border-color: var(--accent); }
 
         .location-section {
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(255, 255, 255, 0.05) 100%);
-            border: 1px solid var(--border-color);
+            background: linear-gradient(135deg, var(--bg-alt) 0%, rgba(255,255,255,0.05) 100%);
+            border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 20px;
+            padding: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             flex-wrap: wrap;
         }
 
@@ -150,85 +107,76 @@
             gap: 4px;
         }
 
-        .location-name { font-weight: 600; font-size: 1.1rem; }
-        .location-coords { font-size: 0.8rem; color: var(--text-secondary); }
-        .location-time { font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7; }
+        .location-name { font-weight: 600; font-size: 1rem; }
+        .location-coords { font-size: 0.75rem; color: var(--text-dim); }
+        .location-time { font-size: 0.7rem; color: var(--text-dim); opacity: 0.7; }
 
         .main-container {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 20px;
+            gap: 16px;
             flex: 1;
         }
 
         .weather-card {
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(255, 255, 255, 0.05) 100%);
-            border: 1px solid var(--border-color);
+            background: linear-gradient(135deg, var(--bg-alt) 0%, rgba(255,255,255,0.05) 100%);
+            border: 1px solid var(--border);
             border-radius: 16px;
-            padding: 25px;
+            padding: 24px;
             animation: slideIn 0.6s ease-out;
-            box-shadow: 0 8px 32px var(--shadow);
         }
 
         @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        .temperature-display {
+        .temp-display {
             text-align: center;
             margin: 20px 0;
         }
 
         .temp-value {
-            font-size: 4.5rem;
+            font-size: 4rem;
             font-weight: 200;
-            background: linear-gradient(135deg, var(--accent-light), var(--accent));
+            background: linear-gradient(135deg, #64b5f6, var(--accent));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .condition-text { font-size: 1.1rem; color: var(--text-secondary); margin: 10px 0; text-transform: capitalize; }
-        .feels-like { font-size: 0.9rem; color: var(--text-secondary); }
+        .condition { font-size: 1rem; color: var(--text-dim); margin: 8px 0; text-transform: capitalize; }
+        .feels-like { font-size: 0.85rem; color: var(--text-dim); }
 
-        .quick-stats {
+        .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
             gap: 12px;
             margin-top: 20px;
             padding-top: 20px;
-            border-top: 1px solid var(--border-color);
+            border-top: 1px solid var(--border);
         }
 
         .stat {
             padding: 12px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
             border-radius: 8px;
             text-align: center;
         }
 
-        .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 6px; }
-        .stat-value { font-size: 1.3rem; font-weight: 600; color: var(--accent-light); }
+        .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 6px; }
+        .stat-value { font-size: 1.2rem; font-weight: 600; color: #64b5f6; }
 
-        .realtime-indicator {
-            display: inline-flex;
+        .section-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 20px 0 12px 0;
+            display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            background: rgba(76, 175, 80, 0.15);
-            border: 1px solid rgba(76, 175, 80, 0.3);
-            border-radius: 20px;
-            font-size: 0.7rem;
-            color: #81c784;
+            gap: 8px;
         }
 
-        .pulse { animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .section-title::before { content: ''; width: 3px; height: 16px; background: var(--accent); border-radius: 2px; }
 
-        .forecast-section { margin-top: 30px; }
-        .section-title { font-size: 1rem; font-weight: 600; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
-        .section-title::before { content: ''; width: 3px; height: 18px; background: var(--accent); border-radius: 2px; }
-
-        .hourly-scroll {
+        .hourly {
             display: flex;
             gap: 10px;
             overflow-x: auto;
@@ -236,60 +184,69 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        .hour-item {
+        .hour {
             flex-shrink: 0;
             padding: 12px 10px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
             border-radius: 8px;
             text-align: center;
-            min-width: 80px;
+            min-width: 75px;
         }
 
-        .hour-time { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 6px; }
-        .hour-icon { font-size: 1.5rem; margin: 6px 0; }
-        .hour-temp { font-size: 0.95rem; font-weight: 600; color: var(--accent-light); }
+        .hour-time { font-size: 0.7rem; color: var(--text-dim); margin-bottom: 6px; }
+        .hour-icon { font-size: 1.4rem; margin: 6px 0; }
+        .hour-temp { font-size: 0.9rem; font-weight: 600; color: #64b5f6; }
 
-        .daily-grid {
+        .daily {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
             gap: 12px;
-            margin-top: 15px;
+            margin-top: 12px;
         }
 
-        .day-item {
-            padding: 15px;
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(255, 255, 255, 0.02) 100%);
-            border: 1px solid var(--border-color);
+        .day {
+            padding: 14px;
+            background: linear-gradient(135deg, var(--bg-alt) 0%, rgba(255,255,255,0.02) 100%);
+            border: 1px solid var(--border);
             border-radius: 10px;
             text-align: center;
         }
 
-        .day-date { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 8px; }
-        .day-icon { font-size: 2rem; margin: 8px 0; }
-        .day-temps { display: flex; justify-content: space-around; font-size: 0.85rem; margin-top: 8px; }
-        .day-temp-max { color: var(--accent-light); font-weight: 600; }
-        .day-temp-min { color: var(--text-secondary); }
+        .day-date { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 8px; }
+        .day-icon { font-size: 1.8rem; margin: 8px 0; }
+        .day-temps { display: flex; justify-content: space-around; font-size: 0.8rem; margin-top: 8px; }
+        .day-max { color: #64b5f6; font-weight: 600; }
+        .day-min { color: var(--text-dim); }
 
-        .alerts-container { margin-top: 20px; }
+        .alerts {
+            margin-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
         .alert {
-            padding: 12px 15px;
+            padding: 12px 14px;
             border-radius: 8px;
-            margin-bottom: 10px;
             border-left: 4px solid;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             animation: slideIn 0.4s ease-out;
         }
 
-        .alert-warning { background: rgba(255, 152, 0, 0.1); border-left-color: #ff9800; color: #ffb74d; }
-        .alert-danger { background: rgba(244, 67, 54, 0.1); border-left-color: #f44336; color: #ef5350; }
-        .alert-info { background: rgba(30, 136, 229, 0.1); border-left-color: #1e88e5; color: #64b5f6; }
+        .alert-warning { background: rgba(255,152,0,0.1); border-left-color: #ff9800; color: #ffb74d; }
+        .alert-danger { background: rgba(244,67,54,0.1); border-left-color: #f44336; color: #ef5350; }
+        .alert-info { background: rgba(30,136,229,0.1); border-left-color: #1e88e5; color: #64b5f6; }
 
-        .loading { text-align: center; padding: 40px 20px; }
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
         .spinner {
             width: 40px;
             height: 40px;
-            border: 3px solid var(--border-color);
+            border: 3px solid var(--border);
             border-top-color: var(--accent);
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -298,96 +255,100 @@
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .loading-text { color: var(--text-secondary); font-size: 0.9rem; }
-
         .error {
-            background: rgba(244, 67, 54, 0.1);
+            background: rgba(244,67,54,0.1);
             border: 1px solid #f44336;
             color: #ef5350;
-            padding: 20px;
+            padding: 16px;
             border-radius: 10px;
             text-align: center;
-            margin: 20px 0;
+            margin: 16px 0;
         }
 
-        .privacy-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            background: rgba(76, 175, 80, 0.15);
-            border: 1px solid rgba(76, 175, 80, 0.3);
+        .source-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(30,136,229,0.15);
+            border: 1px solid rgba(30,136,229,0.3);
             border-radius: 20px;
-            font-size: 0.7rem;
-            color: #81c784;
-            margin-top: 10px;
+            font-size: 0.65rem;
+            color: #64b5f6;
+            margin-top: 12px;
         }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+
+        .modal-content {
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; }
+
+        .api-option {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .api-option:hover { background: rgba(30,136,229,0.1); border-color: var(--accent); }
+        .api-option.selected { background: rgba(30,136,229,0.2); border-color: var(--accent); }
+
+        .api-name { font-weight: 600; font-size: 0.9rem; }
+        .api-desc { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
 
         footer {
             text-align: center;
-            padding: 20px;
-            border-top: 1px solid var(--border-color);
-            margin-top: 30px;
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-        }
-
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin: 10px 0;
-            flex-wrap: wrap;
-        }
-
-        .footer-links a {
-            color: var(--accent-light);
-            text-decoration: none;
+            padding: 16px 0;
+            border-top: 1px solid var(--border);
+            color: var(--text-dim);
             font-size: 0.75rem;
         }
 
-        /* Railway Optimization */
         @media (max-width: 480px) {
-            #app { padding: 12px; }
-            .temp-value { font-size: 3.5rem; }
-            .quick-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+            #app { padding: 12px; gap: 12px; }
+            .temp-value { font-size: 3rem; }
+            .stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
             .stat { padding: 10px 8px; }
-            .main-container { gap: 15px; }
-            .daily-grid { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+            .daily { grid-template-columns: repeat(auto-fit, minmax(95px, 1fr)); }
             button { padding: 6px 10px; font-size: 0.75rem; }
         }
 
-        /* iPad Landscape */
         @media (min-width: 1024px) and (orientation: landscape) {
-            .main-container { grid-template-columns: 1fr 1fr; gap: 25px; }
-            .quick-stats { grid-template-columns: repeat(5, 1fr); }
+            .main-container { grid-template-columns: 1fr 1fr; gap: 20px; }
+            .stats { grid-template-columns: repeat(5, 1fr); }
         }
-
-        /* Dark theme colors for 50+ themes */
-        body[data-theme="dark"] { --bg-primary: #0a0a0a; --bg-secondary: #1a1a1a; }
-        body[data-theme="light"] { --bg-primary: #ffffff; --bg-secondary: #f5f5f5; --text-primary: #1a1a1a; --text-secondary: #666666; --border-color: #e0e0e0; }
-        body[data-theme="ocean"] { --bg-primary: #001f3f; --bg-secondary: #003d5c; --text-primary: #e0f7fa; --accent: #00bcd4; }
-        body[data-theme="sunset"] { --bg-primary: #1a0033; --bg-secondary: #4a0080; --text-primary: #ffe0b2; --accent: #ff6f00; }
-        body[data-theme="forest"] { --bg-primary: #0d3b1f; --bg-secondary: #1b5e3f; --text-primary: #c8e6c9; --accent: #66bb6a; }
-        body[data-theme="cyberpunk"] { --bg-primary: #0a0e27; --bg-secondary: #1a1f3a; --text-primary: #00ff00; --accent: #ff00ff; }
-        body[data-theme="nord"] { --bg-primary: #2e3440; --bg-secondary: #3b4252; --text-primary: #eceff4; --accent: #88c0d0; }
-        body[data-theme="dracula"] { --bg-primary: #282a36; --bg-secondary: #44475a; --text-primary: #f8f8f2; --accent: #50fa7b; }
-        body[data-theme="midnight"] { --bg-primary: #0f172a; --bg-secondary: #1e293b; --text-primary: #e2e8f0; --accent: #0ea5e9; }
     </style>
 </head>
-<body data-theme="dark">
+<body>
 
 <div id="app">
     <header>
-        <div class="logo">
-            <div class="logo-icon">☀️</div>
-            <span>Mini Weather</span>
-        </div>
+        <div class="logo">☀️ Mini Weather</div>
         <div class="controls">
-            <button id="theme-btn" title="Change Theme">🎨</button>
+            <button id="location-btn" title="Get Location">📍</button>
+            <button id="api-btn" title="API Source">🔌</button>
+            <button id="unit-btn" title="°C/°F">°C</button>
             <button id="refresh-btn" title="Refresh">🔄</button>
-            <button id="unit-btn" title="Toggle Unit">°C</button>
-            <button id="notify-btn" title="Notifications">🔔</button>
         </div>
     </header>
 
@@ -397,36 +358,28 @@
             <div class="location-coords" id="loc-coords">-</div>
             <div class="location-time" id="loc-time">-</div>
         </div>
-        <div class="realtime-indicator">
-            <span class="pulse">●</span>
-            <span>Real-time</span>
-        </div>
     </div>
 
     <div id="weather-content" class="main-container">
         <div class="loading">
             <div class="spinner"></div>
-            <p class="loading-text">Fetching your weather...</p>
+            <p style="color: var(--text-dim);">Click 📍 to get started</p>
         </div>
     </div>
 
     <footer>
-        <p>Mini Weather - Real-time Global Forecasts</p>
-        <div class="footer-links">
-            <a href="#" onclick="togglePrivacy(event)">🔒 Privacy</a>
-            <a href="#" onclick="toggleAbout(event)">ℹ️ About</a>
-            <a href="#" onclick="clearData(event)">🗑️ Clear Data</a>
-        </div>
-        <div class="privacy-badge">
-            🔐 End-to-end private • No tracking • No storage
-        </div>
+        <p>Mini Weather • Privacy-First • No Tracking</p>
     </footer>
 </div>
 
-<div id="theme-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; overflow-y: auto;">
-    <div style="padding: 20px; background: var(--bg-secondary); margin: 20px 10px; border-radius: 12px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; max-width: 500px; margin-left: auto; margin-right: auto;" id="theme-grid"></div>
+<div id="api-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-title">Weather Data Source</div>
+        <div id="api-list"></div>
+    </div>
 </div>
 
 <script src="app.js"></script>
 </body>
 </html>
+
