@@ -1,45 +1,61 @@
 {
   "name": "Mini Weather - Real-time Weather & Virtual Garden",
   "short_name": "Mini Weather",
-  "description": "Accurate, fast, privacy-first weather app with virtual garden, streaks, and push notifications",
+  "description": "Accurate, fast, privacy-first weather app with virtual garden, 50+ themes, streaks, and push notifications. Powered by WeatherAPI.com.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "theme_color": "#1e88e5",
   "background_color": "#0a0a0a",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["weather", "productivity", "lifestyle"],
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231e88e5' width='192' height='192'/><text x='50%' y='50%' font-size='120' dominant-baseline='middle' text-anchor='middle' fill='white'>☀️</text></svg>",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect fill='%230a0a0a' width='192' height='192' rx='32'/%3E%3Cdefs%3E%3ClinearGradient id='sg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23ffd54f'/%3E%3Cstop offset='100%25' stop-color='%23ff8f00'/%3E%3C/linearGradient%3E%3ClinearGradient id='cg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2390caf9'/%3E%3Cstop offset='100%25' stop-color='%231e88e5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='72' cy='72' r='28' fill='url(%23sg)'/%3E%3Cellipse cx='128' cy='128' rx='44' ry='28' fill='url(%23cg)'/%3E%3Cellipse cx='108' cy='138' rx='30' ry='24' fill='url(%23cg)'/%3E%3Cellipse cx='148' cy='138' rx='26' ry='22' fill='url(%23cg)'/%3E%3Crect x='94' y='142' width='88' height='24' rx='12' fill='url(%23cg)'/%3E%3C/svg%3E",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%231e88e5' width='512' height='512'/><text x='50%' y='50%' font-size='300' dominant-baseline='middle' text-anchor='middle' fill='white'>☀️</text></svg>",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect fill='%230a0a0a' width='512' height='512' rx='80'/%3E%3Cdefs%3E%3ClinearGradient id='sg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23ffd54f'/%3E%3Cstop offset='100%25' stop-color='%23ff8f00'/%3E%3C/linearGradient%3E%3ClinearGradient id='cg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2390caf9'/%3E%3Cstop offset='100%25' stop-color='%231e88e5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='190' cy='190' r='75' fill='url(%23sg)'/%3E%3Cellipse cx='340' cy='340' rx='118' ry='75' fill='url(%23cg)'/%3E%3Cellipse cx='288' cy='368' rx='80' ry='64' fill='url(%23cg)'/%3E%3Cellipse cx='396' cy='368' rx='70' ry='58' fill='url(%23cg)'/%3E%3Crect x='252' y='380' width='236' height='64' rx='32' fill='url(%23cg)'/%3E%3C/svg%3E",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ],
-  "categories": ["weather", "productivity"],
   "screenshots": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%230a0a0a' width='540' height='720'/><text x='270' y='100' font-size='60' text-anchor='middle' fill='%231e88e5'>Mini Weather</text><text x='270' y='200' font-size='80' text-anchor='middle' fill='white'>☀️</text><text x='270' y='300' font-size='40' text-anchor='middle' fill='%23b0b0b0'>Real-time Weather</text></svg>",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'%3E%3Crect fill='%230a0a0a' width='540' height='720'/%3E%3Crect fill='%231a1a1a' x='20' y='80' width='500' height='120' rx='16'/%3E%3Ctext x='270' y='155' font-size='72' text-anchor='middle' fill='%2390caf9'%3E22%C2%B0C%3C/text%3E%3Ctext x='270' y='60' font-size='28' text-anchor='middle' fill='%231e88e5' font-weight='bold'%3EMini Weather%3C/text%3E%3C/svg%3E",
       "sizes": "540x720",
       "type": "image/svg+xml",
-      "form_factor": "narrow"
+      "form_factor": "narrow",
+      "label": "Mini Weather home screen"
     }
   ],
   "shortcuts": [
     {
-      "name": "Get Weather",
+      "name": "Get Current Weather",
       "short_name": "Weather",
-      "description": "Get current weather",
+      "description": "Get current weather for your location",
       "url": "/?action=weather",
       "icons": [
         {
-          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%231e88e5' width='96' height='96'/><text x='50%' y='50%' font-size='60' dominant-baseline='middle' text-anchor='middle' fill='white'>☀️</text></svg>",
+          "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect fill='%231e88e5' width='96' height='96' rx='16'/%3E%3Ctext x='50%25' y='54%25' font-size='60' dominant-baseline='middle' text-anchor='middle'%3E🌤️%3C/text%3E%3C/svg%3E",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "View Garden",
+      "short_name": "Garden",
+      "description": "Check your virtual weather garden",
+      "url": "/?action=garden",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect fill='%234caf50' width='96' height='96' rx='16'/%3E%3Ctext x='50%25' y='54%25' font-size='60' dominant-baseline='middle' text-anchor='middle'%3E🌱%3C/text%3E%3C/svg%3E",
           "sizes": "96x96",
           "type": "image/svg+xml"
         }
@@ -55,6 +71,7 @@
       "text": "text",
       "url": "url"
     }
-  }
+  },
+  "prefer_related_applications": false,
+  "related_applications": []
 }
-
