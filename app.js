@@ -1126,11 +1126,13 @@ class WeatherApp {
 
         let html = `<div class="weather-card">
             <div class="temp-display">
-                <span class="weather-icon-main">${icon}</span>
-                <div class="temp-value">${displayTemp}°${unit}</div>
-                <div class="condition">${current.description}</div>
-                <div class="feels-like">Feels like ${displayFeels}°${unit}</div>
+                <span class=\"weather-icon-main\">${icon}</span>
+                <div class=\"temp-value\">${displayTemp}°${unit}</div>
+                <div class=\"condition\">${current.description}</div>
+                <div class=\"feels-like\">Feels like ${displayFeels}°${unit}</div>
+                <div class=\"voice-line\">💬 "${getVoiceLine(current.code)}"</div>
             </div>
+
 
             <div class="stats">
                 <div class="stat">
@@ -1387,6 +1389,219 @@ class WeatherApp {
     closeAPIModal() {
         document.getElementById('api-modal').classList.remove('active');
     }
+}
+
+/* ============================================================
+   SETTINGS MANAGER
+   ============================================================ */
+class SettingsManager {
+    constructor() {
+        this.defaults = {
+            privacyMode: false,
+            notificationsEnabled: true,
+            gardenEnabled: true,
+            tempUnit: 'C'
+        };
+        this.load();
+    }
+    load() {
+        const saved = localStorage.getItem('mini-weather-settings');
+        this.settings = saved ? JSON.parse(saved) : { ...this.defaults };
+    }
+    save() {
+        localStorage.setItem('mini-weather-settings', JSON.stringify(this.settings));
+    }
+    get(key) {
+        return this.settings[key] ?? this.defaults[key];
+    }
+    set(key, value) {
+        this.settings[key] = value;
+        this.save();
+    }
+    clearAllData() {
+        if (confirm('⚠️ This will delete ALL local data. Are you sure?')) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+    resetGarden() {
+        if (confirm('Reset your virtual garden?')) {
+            localStorage.removeItem('mini-weather-garden-plant');
+            localStorage.removeItem('mini-weather-garden-streak');
+            localStorage.removeItem('mini-weather-garden-last');
+            localStorage.removeItem('mini-weather-garden-month');
+            localStorage.removeItem('mini-weather-garden-born');
+            showToast('🌱 Garden reset!');
+        }
+    }
+    getStorageUsed() {
+        let total = 0;
+        for (let key in localStorage) {
+            if (localStorage.hasOwnProperty(key)) {
+                total += localStorage[key].length + key.length;
+            }
+        }
+        return Math.round(total / 1024);
+    }
+    exportData() {
+        const data = {};
+        for (let key in localStorage) {
+            if (localStorage.hasOwnProperty(key)) {
+                data[key] = localStorage[key];
+            }
+        }
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mini-weather-backup-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('📥 Data exported!');
+    }
+}
+const settingsManager = new SettingsManager();
+
+// Settings Panel Toggle
+document.getElementById('settings-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('settings-panel').classList.toggle('active');
+});
+document.getElementById('close-settings').addEventListener('click', () => {
+    document.getElementById('settings-panel').classList.remove('active');
+});
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.settings-panel') && !e.target.closest('#settings-btn')) {
+        document.getElementById('settings-panel').classList.remove('active');
+    }
+});
+
+// Settings Event Listeners
+document.getElementById('privacy-mode').addEventListener('change', (e) => {
+    settingsManager.set('privacyMode', e.target.checked);
+    showToast(e.target.checked ? '🔒 Privacy mode ON' : '🔓 Privacy mode OFF');
+});
+document.getElementById('notifications-enabled').addEventListener('change', (e) => {
+    settingsManager.set('notificationsEnabled', e.target.checked);
+    if (e.target.checked) {
+        notifications.requestPermission();
+    }
+});
+document.getElementById('garden-enabled').addEventListener('change', (e) => {
+    settingsManager.set('gardenEnabled', e.target.checked);
+    const gardenCard = document.getElementById('garden-card');
+    if (gardenCard) gardenCard.style.display = e.target.checked ? 'block' : 'none';
+});
+document.getElementById('temp-unit-select').addEventListener('change', (e) => {
+    unit = e.target.value;
+    localStorage.setItem('mini-weather-unit', unit);
+    showToast(`📏 Unit: ${unit === 'C' ? 'Celsius' : 'Fahrenheit'}`);
+});
+document.getElementById('clear-data-btn').addEventListener('click', () => {
+    settingsManager.clearAllData();
+});
+document.getElementById('reset-garden-btn').addEventListener('click', () => {
+    settingsManager.resetGarden();
+});
+document.getElementById('export-data-btn').addEventListener('click', () => {
+    settingsManager.exportData();
+});
+
+// Update storage display
+document.getElementById('storage-used').textContent = settingsManager.getStorageUsed();
+
+// Load settings on page load
+window.addEventListener('load', () => {
+    document.getElementById('privacy-mode').checked = settingsManager.get('privacyMode');
+    document.getElementById('notifications-enabled').checked = settingsManager.get('notificationsEnabled');
+    document.getElementById('garden-enabled').checked = settingsManager.get('gardenEnabled');
+    document.getElementById('temp-unit-select').value = unit;
+});
+
+/* ============================================================
+   FUNNY VOICE LINES
+   ============================================================ */
+const VoiceLines = {
+    clear: [
+        "☀️ It's so bright I need sunglasses!",
+        "Clear skies ahead, chief!",
+        "The sun is having a great day!",
+        "Perfect weather for a picnic!",
+        "No clouds, no problems!"
+    ],
+    cloudy: [
+        "☁️ The sky is playing hide and seek!",
+        "Clouds are just fluffy air!",
+        "It's like someone turned down the brightness",
+        "Gray skies, but we're still here!",
+        "Cloud nine? More like cloud five..."
+    ],
+    rain: [
+        "🌧️ Time to test your umbrella's waterproofing!",
+        "The sky is crying again...",
+        "Puddle jumping weather!",
+        "Bring a raincoat, friend!",
+        "The clouds are being generous today"
+    ],
+    snow: [
+        "❄️ Winter is here... and it's cold!",
+        "Snowmageddon incoming!",
+        "Let it snow, let it snow!",
+        "Frosty the snowman approves!",
+        "Time to build a snowman!"
+    ],
+    wind: [
+        "💨 Hold onto your hat!",
+        "The wind is having a bad day",
+        "Windy McWindface is here!",
+        "Your hair is about to have an adventure!",
+        "Kite flying weather!"
+    ],
+    hot: [
+        "🔥 It's hotter than a jalapeño!",
+        "Bring a water bottle, friend",
+        "The sun is NOT playing around",
+        "Melting mode: ACTIVATED",
+        "Time for ice cream!"
+    ],
+    cold: [
+        "❄️ Brrr! Freeze frame!",
+        "Winter called, it wants its weather back",
+        "Bundle up, buttercup!",
+        "Frostbite incoming!",
+        "The cold never bothered me anyway..."
+    ],
+    thunderstorm: [
+        "⚡ Thor is angry today!",
+        "Nature's light show is on!",
+        "Stay inside and watch the fireworks!",
+        "The sky is having a tantrum!",
+        "Dramatic weather alert!"
+    ],
+    fog: [
+        "🌫️ Can't see 10 feet ahead!",
+        "It's like walking through a cloud!",
+        "Visibility: nope!",
+        "Spooky fog weather!",
+        "Where did the world go?"
+    ],
+    getLine(condition) {
+        const lines = this[condition] || this.cloudy;
+        return lines[Math.floor(Math.random() * lines.length)];
+    }
+};
+
+// Helper to get voice line based on weather code
+function getVoiceLine(weatherCode) {
+    if (weatherCode === 0 || weatherCode === 1) return VoiceLines.getLine('clear');
+    if (weatherCode === 2 || weatherCode === 3) return VoiceLines.getLine('cloudy');
+    if (weatherCode === 45 || weatherCode === 48) return VoiceLines.getLine('fog');
+    if (weatherCode >= 51 && weatherCode <= 67) return VoiceLines.getLine('rain');
+    if (weatherCode >= 71 && weatherCode <= 86) return VoiceLines.getLine('snow');
+    if (weatherCode >= 80 && weatherCode <= 82) return VoiceLines.getLine('rain');
+    if (weatherCode >= 95 && weatherCode <= 99) return VoiceLines.getLine('thunderstorm');
+    return VoiceLines.getLine('cloudy');
 }
 
 /* ============================================================
